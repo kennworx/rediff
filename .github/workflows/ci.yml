@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: clippy & test
+    runs-on: ubuntu-latest
+    steps:
+      # Full history: tests diff against the crate's own repo (HEAD~1, ranges,
+      # rename detection), which a shallow clone can't resolve.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust (stable + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --locked
+
+  # CRAP gate (CLAUDE.md §2) + the per-function ≥90% coverage floor. Runs the project's own
+  # `just` recipes so CI can't drift from the local gates (the CRAP threshold lives in
+  # .cargo-crap.toml and the recipes read it from there). `just gate` collects coverage once
+  # and feeds both the CRAP gate and the coverage floor (vs. instrumenting the suite twice).
+  crap:
+    name: crap + coverage
+    runs-on: ubuntu-latest
+    steps:
+      # Full history: the coverage tests diff against the crate's own repo
+      # (HEAD~1, ranges, rename detection), which a shallow clone can't resolve.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust (stable + llvm-tools)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install just + cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just,cargo-llvm-cov
+
+      - name: Install cargo-crap
+        run: cargo install cargo-crap
+
+      - name: CRAP + coverage gate
+        run: just gate

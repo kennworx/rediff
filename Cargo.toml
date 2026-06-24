@@ -1,0 +1,122 @@
+[package]
+name = "rediff"
+version = "0.1.0"
+edition = "2021"
+description = "A fast Rust TUI git-diff viewer for reviewing changes"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/kennworx/rediff"
+homepage = "https://github.com/kennworx/rediff"
+keywords = ["git", "diff", "tui", "review", "terminal"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+# gix 0.84.0 is unresolvable on crates.io (wants an unpublished gix-credentials);
+# pin 0.83. Default features pull the `extras` kitchen sink (credentials/prompt,
+# archive, mailmap, regex revspecs, signal-hook); we enable only what src/git calls:
+# `status` (worktree/index enumeration), `blame` (per-line attribution for the peek),
+# `revision` (rev_parse_single/merge_base), `sha1` (hash backend, off without defaults),
+# `max-performance-safe` (parallel + pack caches). Trade-off: with revparse-regex
+# off, gix still parses `:/pattern` revspecs but matches the pattern as literal
+# text (its non-regex fallback), not as a regex.
+gix = { version = "0.83", default-features = false, features = [
+    "status",
+    "blame",
+    "revision",
+    "sha1",
+    "max-performance-safe",
+] }
+imara-diff = "0.2"
+clap = { version = "4", features = ["derive"] }
+diffy = "0.5"
+indexmap = "2"
+anyhow = "1"
+ratatui = "0.30"
+tree-sitter = "0.26"
+tree-sitter-highlight = "0.26"
+tree-sitter-rust = "0.24"
+tree-sitter-typescript = "0.23"
+tree-sitter-javascript = "0.25"
+syntect = "5.3"
+two-face = "0.5"
+serde = { version = "1", features = ["derive"] }
+strip-ansi-escapes = "0.2"
+# Terminal display-width for the blame gutter (CJK/emoji names are 2 cells wide).
+unicode-width = "0.2"
+toml = "0.8"
+toml_edit = "0.25.12"
+
+[dev-dependencies]
+tempfile = "3"
+portable-pty = "0.9"
+
+[profile.release]
+opt-level = 3
+strip = true
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+[lints]
+workspace = true
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+# Builders chain `-> Self`; requiring #[must_use] on every setter is noise.
+return_self_not_must_use = "allow"
+must_use_candidate = "allow"
+
+# Stricter opt-in lints (https://emschwartz.me/your-clippy-config-should-be-stricter/)
+# Don't panic
+string_slice = "warn"
+indexing_slicing = "warn"
+unwrap_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+unreachable = "warn"
+get_unwrap = "warn"
+unwrap_in_result = "warn"
+unchecked_time_subtraction = "warn"
+panic_in_result_fn = "warn"
+# Don't fail silently
+let_underscore_future = "warn"
+let_underscore_must_use = "warn"
+unused_result_ok = "warn"
+map_err_ignore = "warn"
+assertions_on_result_states = "warn"
+# Async safety
+await_holding_lock = "warn"
+await_holding_refcell_ref = "warn"
+if_let_mutex = "warn"
+large_futures = "warn"
+# Memory safety
+mem_forget = "warn"
+undocumented_unsafe_blocks = "warn"
+multiple_unsafe_ops_per_block = "warn"
+unnecessary_safety_doc = "warn"
+unnecessary_safety_comment = "warn"
+# Numeric correctness
+float_cmp = "warn"
+float_cmp_const = "warn"
+lossy_float_literal = "warn"
+cast_sign_loss = "warn"
+invalid_upcast_comparisons = "warn"
+# General best practices
+rc_mutex = "warn"
+debug_assert_with_mut_call = "warn"
+iter_not_returning_iterator = "warn"
+expl_impl_clone_on_copy = "warn"
+infallible_try_from = "warn"
+dbg_macro = "warn"
+# Suppression discipline
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
